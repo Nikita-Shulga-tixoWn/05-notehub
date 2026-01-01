@@ -16,9 +16,11 @@ export default function Pagination({
     <ReactPaginate
       pageCount={totalPages}
       forcePage={page - 1}
-      onPageChange={({ selected }) => onChange(selected + 1)}
+      onPageChange={(e) => onChange(e.selected + 1)}
       containerClassName={css.pagination}
       activeClassName={css.active}
+      previousLabel="←"
+      nextLabel="→"
     />
   );
 }

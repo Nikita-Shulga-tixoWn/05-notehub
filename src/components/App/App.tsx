@@ -1,16 +1,15 @@
-import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { useDebounce } from "use-debounce";
-import toast, { Toaster } from "react-hot-toast";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { fetchNotes } from "../../services/noteService";
+import SearchBox from "../SearchBox/SearchBox";
 import NoteList from "../NoteList/NoteList";
 import Pagination from "../Pagination/Pagination";
-import SearchBox from "../SearchBox/SearchBox";
-import Modal from "../Modal/Modal";
-import NoteForm from "../NoteForm/NoteForm";
 import Loader from "../Loader/Loader";
 import ErrorMessage from "../ErrorMessage/ErrorMessage";
+import Modal from "../Modal/Modal";
+import NoteForm from "../NoteForm/NoteForm";
+
+import { fetchNotes, deleteNote } from "../../services/noteService";
 
 import css from "./App.module.css";
 
@@ -19,30 +18,25 @@ export default function App() {
   const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const [debouncedSearch] = useDebounce(search, 500);
+  const queryClient = useQueryClient();
 
-  const { data, isLoading, isError, isSuccess } = useQuery({
-    queryKey: ["notes", page, debouncedSearch],
-    queryFn: () => fetchNotes(page, 12, debouncedSearch),
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["notes", page, search],
+    queryFn: () => fetchNotes(page, 12, search),
     placeholderData: (prev) => prev,
   });
 
-  useEffect(() => {
-    if (isSuccess && data?.notes.length === 0) {
-      toast("No notes found");
-    }
-  }, [isSuccess, data]);
-
-  useEffect(() => {
-    if (isError) {
-      toast.error("Failed to load notes");
-    }
-  }, [isError]);
+  const deleteMutation = useMutation({
+    mutationFn: deleteNote,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notes"] });
+    },
+  });
 
   return (
     <div className={css.app}>
       <header className={css.toolbar}>
-        <SearchBox value={search} onChange={setSearch} />
+        <SearchBox onSearch={setSearch} />
 
         {data && data.totalPages > 1 && (
           <Pagination
@@ -52,7 +46,10 @@ export default function App() {
           />
         )}
 
-        <button className={css.button} onClick={() => setIsModalOpen(true)}>
+        <button
+          className={css.button}
+          onClick={() => setIsModalOpen(true)}
+        >
           Create note +
         </button>
       </header>
@@ -60,8 +57,11 @@ export default function App() {
       {isLoading && <Loader />}
       {isError && <ErrorMessage />}
 
-      {data && data.notes.length > 0 && (
-        <NoteList notes={data.notes} />
+      {!!data?.notes?.length && (
+        <NoteList
+          notes={data.notes}
+          onDelete={(id) => deleteMutation.mutate(id)}
+        />
       )}
 
       {isModalOpen && (
@@ -69,8 +69,7 @@ export default function App() {
           <NoteForm onClose={() => setIsModalOpen(false)} />
         </Modal>
       )}
-
-      <Toaster />
     </div>
   );
 }
+
