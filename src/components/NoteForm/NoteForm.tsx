@@ -1,6 +1,6 @@
 import { Formik, Form, Field, ErrorMessage as FormikError } from "formik";
 import * as Yup from "yup";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { createNote } from "../../services/noteService";
 import type { CreateNotePayload } from "../../services/noteService";
@@ -12,9 +12,12 @@ interface NoteFormProps {
 }
 
 export default function NoteForm({ onClose }: NoteFormProps) {
-  const mutation = useMutation<CreateNotePayload, Error, CreateNotePayload>({
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
     mutationFn: createNote,
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notes"] });
       onClose();
     },
   });
